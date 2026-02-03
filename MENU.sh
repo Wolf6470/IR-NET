@@ -2209,6 +2209,67 @@ manage_ip_health_check() {
     read -n 1 -s -r -p $'\n'"${R}PRESS ANY KEY TO CONTINUE...${N}"
 }
 
+
+check_connectivity_status() {
+    clear
+    echo -e "${B_CYAN}--- CHECK IRAN VS GLOBAL CONNECTIVITY ---${C_RESET}\n"
+    log_message "INFO" "CHECKING CONNECTIVITY TO MAJOR SERVICES..."
+
+    # Ensure netcat is installed
+    if ! command -v nc &>/dev/null; then
+        echo -e "${C_YELLOW}INSTALLING REQUIRED TOOL (NETCAT)...${C_RESET}"
+        apt-get update -qq && apt-get install -y netcat-openbsd -qq
+    fi
+
+    # Target List
+    local sites=("8.8.8.8" "1.1.1.1" "9.9.9.9" "google.com" "chatgpt.com" "check-host.net" "fa.wikipedia.org" "stackoverflow.com" "store.steampowered.com" "github.com" "dash.cloudflare.com" "cloudflare.com" "console.hetzner.com" "mail.google.com" "fastly.com" "panel.arvancloud.ir" "arvancloud.ir" "zoomit.ir" "soft98.ir" "softgozar.com" "yasdl.com")
+
+    # Table Header (Fixed Widths)
+    echo -e "${B_BLUE}+--------------------------------+--------------+--------------+--------------+${C_RESET}"
+    printf "${B_BLUE}| ${B_YELLOW}%-30s ${B_BLUE}| ${B_YELLOW}%-12s ${B_BLUE}| ${B_YELLOW}%-12s ${B_BLUE}| ${B_YELLOW}%-12s ${B_BLUE}|${C_RESET}\n" "TARGET HOST" "PING" "TCP:80" "TCP:443"
+    echo -e "${B_BLUE}+--------------------------------+--------------+--------------+--------------+${C_RESET}"
+
+    for s in "${sites[@]}"; do
+        local p_text p_color
+        local t80_text t80_color
+        local t443_text t443_color
+
+        # 1. PING Check (1 packet, 1s timeout)
+        if ping -c1 -W1 "$s" &>/dev/null; then
+            p_text="PASS"
+            p_color="${G}"
+        else
+            p_text="FAIL"
+            p_color="${R}"
+        fi
+
+        # 2. HTTP Port 80 Check (1s timeout)
+        if nc -z -w1 "$s" 80 &>/dev/null; then
+            t80_text="OPEN"
+            t80_color="${G}"
+        else
+            t80_text="FAIL"
+            t80_color="${R}"
+        fi
+
+        # 3. HTTPS Port 443 Check (1s timeout)
+        if nc -z -w1 "$s" 443 &>/dev/null; then
+            t443_text="OPEN"
+            t443_color="${G}"
+        else
+            t443_text="FAIL"
+            t443_color="${R}"
+        fi
+
+        # Print Row (Color codes are OUTSIDE the %s format specifier to preserve alignment)
+        printf "${B_BLUE}| ${C_WHITE}%-30s ${B_BLUE}| ${p_color}%-12s ${B_BLUE}| ${t80_color}%-12s ${B_BLUE}| ${t443_color}%-12s ${B_BLUE}|${C_RESET}\n" "$s" "$p_text" "$t80_text" "$t443_text"
+    done
+
+    echo -e "${B_BLUE}+--------------------------------+--------------+--------------+--------------+${C_RESET}"
+    echo -e "\n${C_WHITE}ANALYSIS COMPLETE.${C_RESET}"
+    read -n 1 -s -r -p $'\n'"${R}PRESS ANY KEY TO CONTINUE...${N}"
+}
+
 manage_network_optimization() {
     while true; do
         clear
@@ -2224,7 +2285,8 @@ manage_network_optimization() {
         printf "  ${C_YELLOW}%2d)${B_WHITE} %s\n" "8" "SERVER INTERNET SPEED TEST (SPEEDTEST)"
         printf "  ${C_YELLOW}%2d)${B_WHITE} %s\n" "9" "PACKET LOSS TEST BETWEEN SERVERS (MTR)"
         printf "  ${C_YELLOW}%2d)${C_WHITE} %s\n" "10" "IP HEALTH CHECK"
-        printf "  ${C_YELLOW}%2d)${C_WHITE} %s\n" "11" "BACK TO MAIN MENU"
+        printf "  ${C_YELLOW}%2d)${B_CYAN} %s\n" "11" "CHECK IRAN VS GLOBAL CONNECTIVITY"
+        printf "  ${C_YELLOW}%2d)${C_WHITE} %s\n" "12" "BACK TO MAIN MENU"
         echo -e "${B_BLUE}----------------------------------------------------${C_RESET}"
         printf "%b" "${B_MAGENTA}PLEASE SELECT AN OPTION: ${C_RESET}"; read -e -r choice
 
@@ -2233,7 +2295,8 @@ manage_network_optimization() {
             4) manage_sanction_dns ;; 5) manage_dns ;;
             6) manage_secure_dns ;; 7) run_as_bbr_optimization ;; 8) run_speedtest ;;
             9) run_packet_loss_test ;; 10) manage_ip_health_check ;;
-            11) return ;;
+            11) check_connectivity_status ;;
+            12) return ;;
             *) echo -e "\n${C_RED}INVALID OPTION!${C_RESET}"; sleep 1 ;;
         esac
     done
